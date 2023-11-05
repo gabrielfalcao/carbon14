@@ -1,0 +1,54 @@
+# carbon14
+
+FILE-SYSTEM FORENSICS
+
+- Recursive file-system traversal
+- Timestamps serialization
+- Ultra-Redundant File Checksum:
+  - ADLER32
+  - SHA1
+  - SHA2
+    - **224**
+    - **256**
+    - **384**
+    - **512**
+    - **512_224**
+    - **512_256**
+  - SHA3
+    - **Sha3_224**
+    - **Sha3_256**
+    - **Sha3_384**
+    - **Sha3_512**
+    - **Keccak224**
+    - **Keccak256**
+    - **Keccak256full**
+  - CRC
+    - **CRC_3_GSM**
+    - **CRC_4_G_704**
+    - **CRC_5_G_704**
+    - **CRC_6_CDMA2000_A**
+    - **CRC_6_CDMA2000_B**
+    - **CRC_6_GSM**
+    - **CRC_8_LTE**
+    - **CRC_11_FLEXRAY**
+    - **CRC_16_TELEDISK**
+    - **CRC_16_OPENSAFETY_A**
+    - **CRC_16_OPENSAFETY_B**
+    - **CRC_16_PROFIBUS**
+    - **CRC_16_USB**
+    - **CRC_16_XMODEM**
+    - **CRC_24_BLE**
+    - **CRC_24_OPENPGP**
+    - **CRC_32_BZIP2**
+    - **CRC_32_ISCSI**
+    - **CRC_32_ISO_HDLC**
+    - **CRC_32_JAMCRC**
+    - **CRC_32_MPEG_2**
+    - **CRC_40_GSM**
+    - **CRC_64_GO_ISO**
+    - **CRC_64_REDIS**
+    - **CRC_64_ECMA_182**
+    - **CRC_64_XZ**
+    - **CRC_64_MS**
+    - **CRC_64_WE**
+    - **CRC_82_DARC**
