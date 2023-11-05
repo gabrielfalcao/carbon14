@@ -1,42 +1,12 @@
 use clap::{Parser, ValueEnum};
 use copypasta::{ClipboardContext, ClipboardProvider};
-
+use std::io::Write;
 use carbon14::HochTable;
-use hex;
-use hex::FromHexError;
-use iocore::plant::{PathRelative};
-use iocore::{rsvfilematch, absolute_path};
-use iocore::Exception;
+use carbon14::Error;
+use iocore::plant::PathRelative;
+use iocore::{absolute_path, rsvfilematch, open_write};
 use serde_yaml;
-
-#[derive(Debug)]
-pub enum Error {
-    HexDecodeError(FromHexError),
-    IOException(iocore::Exception),
-}
-
-impl From<FromHexError> for Error {
-    fn from(e: FromHexError) -> Self {
-        Error::HexDecodeError(e)
-    }
-}
-
-impl From<Exception> for Error {
-    fn from(e: Exception) -> Self {
-        Error::IOException(e)
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Error::IOException(e) => write!(f, "I/O Core Exception: {}", e),
-            Error::HexDecodeError(e) => write!(f, "Hex Decode Exception: {}", e),
-        }
-    }
-}
+use std::borrow::BorrowMut;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Format {
@@ -53,12 +23,26 @@ pub enum Format {
 pub struct Argv {
     pub files: Vec<String>,
 
+    #[clap(short = 'x', long)]
+    pub hexonly: bool,
+
+    #[clap(short, long)]
+    pub clipboard: bool,
+
     #[clap(short, long, value_enum)]
     pub format: Option<Format>,
+
+    #[clap(short, long)]
+    pub output_file: Option<String>,
 }
 
 pub fn main() -> Result<(), Error> {
     let args = Argv::parse();
+    let clipboard = args.clipboard;
+    let hexonly = args.hexonly;
+    let output_file = args.output_file.clone();
+    let mut table_list = Vec::<HochTable>::new();
+    let tables: &mut Vec<HochTable> = table_list.borrow_mut();
     rsvfilematch(args.files, move |path| {
         let data = match std::fs::read(&path) {
             Ok(data) => data.to_vec(),
@@ -71,20 +55,26 @@ pub fn main() -> Result<(), Error> {
                     .display()
             ),
             &data,
+            hexonly,
         ) {
             Ok(table) => {
+                if args.output_file == None {
                 match serde_yaml::to_string(&table) {
                     Ok(display) => {
                         println!("{}", display);
-                        let msg = format!(
-                            "failed to copy checksum data to clipboard for file: {}",
-                            path.display()
-                        );
-                        let mut ctx = ClipboardContext::new().expect(&msg);
-                        ctx.set_contents(display.clone()).expect(&msg);
+                        if clipboard {
+                            let msg = format!(
+                                "failed to copy checksum data to clipboard for file: {}",
+                                path.display()
+                            );
+                            let mut ctx = ClipboardContext::new().expect(&msg);
+                            ctx.set_contents(display.clone()).expect(&msg);
+                        }
                     }
                     Err(e) => eprintln!("{}", e),
                 };
+                }
+                tables.push(table);
                 return true;
             }
             Err(e) => {
@@ -93,5 +83,8 @@ pub fn main() -> Result<(), Error> {
             }
         }
     })?;
+    if let Some(output_file) = output_file {
+        open_write(&output_file)?.write(serde_yaml::to_string(&table_list)?.as_bytes())?;
+    }
     Ok(())
 }

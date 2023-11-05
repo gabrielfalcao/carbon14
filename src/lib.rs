@@ -1,3 +1,4 @@
 pub mod errors;
-pub mod ht;
-pub use ht::HochTable;
+pub mod hf;
+pub use errors::Error;
+pub use hf::HochTable;

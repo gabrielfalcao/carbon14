@@ -61,7 +61,7 @@ use serde::{Serialize,Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HochTable {
-    meta: NodeMeta,
+    meta: Option<NodeMeta>,
     sha1: String,
     sha512: String,
     sha224: String,
@@ -129,7 +129,7 @@ pub struct HochTable {
 }
 
 impl HochTable {
-    pub fn new(name: String, data: &[u8]) -> Result<HochTable, Error> {
+    pub fn new(name: String, data: &[u8], hexonly: bool) -> Result<HochTable, Error> {
         let mut sha3 = Sha3_224::new();
         sha3.update(data);
         let sha3_224 = hex::encode(sha3.finalize());
@@ -276,7 +276,7 @@ impl HochTable {
 
         let sha1 = Sha1::default().digest(data).to_hex();
         Ok(HochTable {
-            meta: NodeMeta::new(name.into()),
+            meta: if hexonly { None } else { Some(NodeMeta::new(name.into())) },
             md5: md5,
             sha1: sha1,
             adler32: adler32chk,
