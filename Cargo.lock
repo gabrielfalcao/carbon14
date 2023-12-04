@@ -180,7 +180,7 @@ dependencies = [
 
 [[package]]
 name = "carbon14"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "adler32",
  "base64",
