@@ -1,5 +1,5 @@
 use crate::errors::Error;
-use iocore::plant::NodeMeta;
+use iocore::FSNode;
 use adler32::adler32;
 use crc::{
     Crc,
@@ -61,7 +61,7 @@ use serde::{Serialize,Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HochTable {
-    meta: Option<NodeMeta>,
+    meta: Option<FSNode>,
     sha1: String,
     sha512: String,
     sha224: String,
@@ -276,7 +276,7 @@ impl HochTable {
 
         let sha1 = Sha1::default().digest(data).to_hex();
         Ok(HochTable {
-            meta: if hexonly { None } else { Some(NodeMeta::new(name.into())) },
+            meta: if hexonly { None } else { Some(FSNode::new(name.into())) },
             md5: md5,
             sha1: sha1,
             adler32: adler32chk,

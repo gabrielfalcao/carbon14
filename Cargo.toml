@@ -18,7 +18,7 @@ copypasta = "0.10.0"
 crc = "3.0.1"
 hex = { version = "0.4.3", features = ["serde"] }
 indicatif = "0.17.7"
-iocore = "0.110.0"
+iocore = "0.111.0"
 md5 = "0.7.0"
 serde = { version = "1.0.190", features = ["alloc", "derive", "rc", "serde_derive"] }
 serde-jsonlines = "0.4.0"
