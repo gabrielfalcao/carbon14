@@ -86,7 +86,7 @@ impl Carbon14 {
                     }
                 } else if target.is_dir() {
                     walk_dir(
-                        target,
+                        &target,
                         &mut |path: &Path| {
                             if path.is_file() {
                                 match path.read_bytes() {
