@@ -1,3 +1,10 @@
+// $$'""""'$$$                   $$                         $$$  $$   $$
+// $' .$$$. `$                   $$                          $$  $$   $$
+// $  $$$$$$$$ .$$$$$$. $$$$$$$. $$$$$$$. .$$$$$$. $$$$$$$.  $$  $$$$$$$
+// $  $$$$$$$$ $$'  `$$ $$'  `$$ $$'  `$$ $$'  `$$ $$'  `$$  $$       $$
+// $. `$$$' .$ $$.  .$$ $$       $$.  .$$ $$.  .$$ $$    $$  $$       $$
+// $$.     .$$ `$$$$$$$ $$       $$$$$$$' `$$$$$$' $$    $$ $$$$      $$
+// $$$$$$$$$$$
 use hex;
 use hex::FromHexError;
 use iocore::Exception;
@@ -6,6 +13,7 @@ use serde_yaml;
 #[derive(Debug)]
 pub enum Error {
     YamlEncodeError(serde_yaml::Error),
+    Error(String),
     HexDecodeError(FromHexError),
     IOError(std::io::Error),
     IOException(iocore::Exception),
@@ -40,6 +48,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::IOException(e) => write!(f, "I/O Core Exception: {}", e),
             Error::IOError(e) => write!(f, "IO Error: {}", e),
+            Error::Error(e) => write!(f, "{}", e),
             Error::YamlEncodeError(e) => write!(f, "YamlEncode Error: {}", e),
             Error::HexDecodeError(e) => write!(f, "Hex Decode Exception: {}", e),
         }

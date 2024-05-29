@@ -15,10 +15,10 @@ adler32 = { version = "1.2.0", features = ["core"] }
 base64 = "0.21.5"
 clap = { version = "4.4.6", features = ["derive", "unicode", "env", "string", "wrap_help"] }
 copypasta = "0.10.0"
+iocore = { path = "../iocore", version="0.1000.0" }
 crc = "3.0.1"
 hex = { version = "0.4.3", features = ["serde"] }
 indicatif = "0.17.7"
-iocore = "0.111.0"
 md5 = "0.7.0"
 serde = { version = "1.0.190", features = ["alloc", "derive", "rc", "serde_derive"] }
 serde-jsonlines = "0.4.0"
@@ -28,11 +28,9 @@ sha = "1.0.3"
 sha2 = { version = "0.10.8", features = ["oid", "compress"] }
 sha3 = { version = "0.10.8", features = ["std", "asm", "reset", "oid"] }
 
-
-
 [[bin]]
 name = "carbon14"
-path = "src/main.rs"
+path = "src/carbon14.rs"
 bench = false
 
 [lib]
@@ -41,3 +39,11 @@ path = "src/lib.rs"
 
 [dev-dependencies]
 k9 = "0.11.6"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+'cfg(tarpaulin)',
+'cfg(freebsd10)',
+'cfg(freebsd11)',
+'cfg(freebsd12)',
+] }

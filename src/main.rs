@@ -1,27 +1,25 @@
-use clap::{Parser, ValueEnum};
-use copypasta::{ClipboardContext, ClipboardProvider};
-use std::io::Write;
-use carbon14::HochTable;
+// $$'""""'$$$                   $$                         $$$  $$   $$
+// $' .$$$. `$                   $$                          $$  $$   $$
+// $  $$$$$$$$ .$$$$$$. $$$$$$$. $$$$$$$. .$$$$$$. $$$$$$$.  $$  $$$$$$$
+// $  $$$$$$$$ $$'  `$$ $$'  `$$ $$'  `$$ $$'  `$$ $$'  `$$  $$       $$
+// $. `$$$' .$ $$.  .$$ $$       $$.  .$$ $$.  .$$ $$    $$  $$       $$
+// $$.     .$$ `$$$$$$$ $$       $$$$$$$' `$$$$$$' $$    $$ $$$$      $$
+// $$$$$$$$$$$
 use carbon14::Error;
-use iocore::{absolute_path, rsvfilematch, open_write};
+use carbon14::HochTable;
+use clap::{Parser};
+use iocore::{walk_nodes, Path};
+use serde::Serialize;
 use serde_yaml;
 use std::borrow::BorrowMut;
-use iocore::PathRelative;
+use std::io::{stdin, IsTerminal, Read, BufRead};
+use carbon14::{clipboard_lines, stdin_lines};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum Format {
-    Plain,
-    Csv,
-    Toml,
-    Json,
-    Yaml,
-}
-
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
-pub struct Argv {
-    pub files: Vec<String>,
+pub struct Cli {
+    targets: Vec<String>,
 
     #[clap(short = 'x', long)]
     pub hexonly: bool,
@@ -29,62 +27,198 @@ pub struct Argv {
     #[clap(short, long)]
     pub clipboard: bool,
 
-    #[clap(short, long, value_enum)]
-    pub format: Option<Format>,
-
     #[clap(short, long)]
-    pub output_file: Option<String>,
-}
+    pub output: bool,
 
-pub fn main() -> Result<(), Error> {
-    let args = Argv::parse();
-    let clipboard = args.clipboard;
-    let hexonly = args.hexonly;
-    let output_file = args.output_file.clone();
-    let mut table_list = Vec::<HochTable>::new();
-    let tables: &mut Vec<HochTable> = table_list.borrow_mut();
-    rsvfilematch(args.files, move |path| {
-        let data = match std::fs::read(&path) {
-            Ok(data) => data.to_vec(),
-            Err(_) => return false,
-        };
-        match HochTable::new(
-            format!(
-                "{}",
-                path.relative_wherewith(&absolute_path(".").unwrap())
-                    .display()
-            ),
-            &data,
-            hexonly,
-        ) {
-            Ok(table) => {
-                if args.output_file == None {
-                match serde_yaml::to_string(&table) {
-                    Ok(display) => {
-                        println!("{}", display);
-                        if clipboard {
-                            let msg = format!(
-                                "failed to copy checksum data to clipboard for file: {}",
-                                path.display()
-                            );
-                            let mut ctx = ClipboardContext::new().expect(&msg);
-                            ctx.set_contents(display.clone()).expect(&msg);
-                        }
-                    }
-                    Err(e) => eprintln!("{}", e),
-                };
+    #[clap(short = 'f', long, requires = "output")]
+    pub output_file: Option<Path>,
+
+    #[clap(short, long, requires = "output_file")]
+    pub defer_write: bool,
+}
+impl Cli {
+    pub fn writer(&self, log_err: bool) -> Option<FWriter> {
+        let defer_write = self.defer_write.clone();
+        self.output_file.map(|p| FWriter::new(p, defer_write, log_err))
+    }
+    pub fn objects(&self) -> Vec<String> {
+        if self.targets.len() > 0 {
+            self.targets.iter().filter(|s| !s.is_empty()).map(|s|s.clone()).collect()
+        } else {
+            stdin_lines().or(clipboard_lines()).unwrap_or(Vec::new())
+        }
+    }
+    pub fn stdin(&self) -> Option<Vec<String>> {
+        let mut lines = Vec::new();
+        for line in stdin().lock().lines() {
+            match line {
+                Ok(line) => lines.push(line),
+                Err(y) => {
+                    eprintln!("error: {}", y);
+                    break;
                 }
-                tables.push(table);
-                return true;
-            }
-            Err(e) => {
-                eprintln!("\x1b[1;38;5;160m{}\x1b[0m", e);
-                return false;
             }
         }
-    })?;
-    if let Some(output_file) = output_file {
-        open_write(&output_file)?.write(serde_yaml::to_string(&table_list)?.as_bytes())?;
+        (lines.len() > 0).then_some(lines)
     }
-    Ok(())
+    pub fn clipboard(&self) -> Option<Vec<String>> {
+        match ClipboardContext::new() {
+            Ok(mc) => match c.get_contents() {
+                Ok(t) => return Some(
+                    t.lines()
+                        .filter(|t| !t.trim().is_empty())
+                        .map(|t| t.to_string())
+                        .collect::<Vec<String>>(),
+                ),
+                Err(y) => {
+                    eprintln!("error: {}", y);
+                }
+            },
+            Err(y) => {
+                eprintln!("error: {}", y);
+            }
+        }
+        None
+    }
+}
+struct Carbon14 {
+    pub tables: Vec<HochTable>,
+    pub cli: Cli,
+}
+impl Carbon14 {
+    pub fn new() -> Carbon14 {
+        let tables = Vec::<HochTable>::new();
+        let cli = Cli::parse();
+        Carbon14 {
+            tables,
+            cli,
+        }
+    }
+    pub fn scan(&mut self) -> Vec<HochTable> {
+        let mut tables = Vec::<HochTable>::new();
+        let mut
+        for target in c14.cli.objects() {
+            if Path::from(target).exists() {
+                let meta = (!args.hexonly).then_some(path.to_string());
+                walk_nodes(
+                    vec![target.to_string()],
+                    &mut |p| {
+                        let table = HochTable::new(meta).cs(path.read_bytes());
+                        tables.push(table);
+                        writer.append(&table).unwrap_or(());
+                        p.is_dir()
+                    },
+                    &mut |_path, _exc| None,
+                    None,
+                )?;
+            } else {
+                let meta = Some(target.clone());
+                let table = HochTable::new(meta).cs(path.read_bytes());
+                tables.push(table);
+                writer.append(&table).unwrap_or(());
+                p.is_dir()
+            }
+        }
+    }
+    pub fn launch() -> Result<(), Error> {
+        let mut c14 = Carbon14::new();
+        for target in c14.cli.objects() {
+            if Path::from(target).exists() {
+                let meta = (!args.hexonly).then_some(path.to_string());
+                walk_nodes(
+                    vec![target.to_string()],
+                    &mut |p| {
+                        let table = HochTable::new(meta).cs(path.read_bytes());
+                        tables.push(table);
+                        writer.append(&table).unwrap_or(());
+                        p.is_dir()
+                    },
+                    &mut |_path, _exc| None,
+                    None,
+                )?;
+            } else {
+                let meta = Some(target.clone());
+                let table = HochTable::new(meta).cs(path.read_bytes());
+                tables.push(table);
+                writer.append(&table).unwrap_or(());
+                p.is_dir()
+            }
+        }
+        if let Some(output_file) = output_file {
+            open_write(&output_file)?.write(serde_yaml::to_string(&table_list)?.as_bytes())?;
+        }
+        Ok(())
+    }
+}
+pub fn main() -> Result<(), Error> {
+    Carbon14::launch()
+}
+
+pub trait HochSchreiber {
+    fn append(&mut self, data: impl Serialize) -> Result<FWriter, Error> ;
+    fn encode(&self, data: impl Serialize) -> Result<Vec<u8>, Error> ;
+    fn handle(&self, e: impl Into<Error>) -> Result<(), Error> ;
+    fn finish(&mut self) -> Result<(), Error> ;
+}
+
+#[derive(Debug, Clone)]
+struct FWriter {
+    path: Path,
+    defer_write: bool,
+    log_err: bool,
+    buffer: Vec<u8>,
+}
+
+impl FWriter {
+    pub fn new(path: Path, defer_write: bool, log_err: bool) -> FWriter {
+        FWriter {
+            path,
+            defer_write,
+            log_err,
+            buffer: Vec::new(),
+        }
+    }
+    pub fn append(&mut self, data: impl Serialize) -> Result<FWriter, Error> {
+        match self.encode(data) {
+            Ok(bytes) => {
+                if self.defer_write {
+                    self.buffer.extend_from_slice(&bytes);
+                } else {
+                    if let Err(y) = self.path.append(&bytes).map(|_| ()) {
+                        self.handle(y)?;
+                    }
+                }
+            }
+            Err(y) => self.handle(y)?,
+        }
+        Ok(self.clone())
+    }
+    fn encode(&self, data: impl Serialize) -> Result<Vec<u8>, Error> {
+        let mut bytes = b"\n---\n".to_vec();
+        let y = serde_yaml::to_string(&data).map_err(|e| {
+            Error::Error(format!("encoding yaml destined to {}: {}", &self.path, e))
+        })?;
+        bytes.extend_from_slice(y.as_bytes());
+        Ok(bytes)
+    }
+    fn handle(&self, e: impl Into<Error>) -> Result<(), Error> {
+        let e: Error = e.into();
+        if self.log_err {
+            eprintln!("error: {}", e);
+            Ok(())
+        } else {
+            Err(e)
+        }
+    }
+    pub fn finish(&mut self) -> Result<(), Error> {
+        if self.buffer.is_empty() {
+            Err(Error::Error(format!(
+                "writing data into {}: empty buffer",
+                &self.path
+            )))
+        } else {
+            self.path.write(&self.buffer)?;
+            Ok(())
+        }
+    }
 }
