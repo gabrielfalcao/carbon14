@@ -42,10 +42,11 @@ impl Cli {
         FWriter::new(self.output_file.clone(), self.defer_write, self.log_err)
     }
     pub fn objects(&self) -> Result<Vec<String>, Error> {
-        let objects = if self.targets.len() > 0 {
-            self.targets.iter().filter(|s| !s.is_empty()).map(|s| s.clone()).collect()
+        let targets: Vec<String> = self.targets.iter().filter(|s| !s.is_empty()).map(|s| Path::from(s)).filter(|p|p.exists()).map(|p|p.to_string()).collect();
+        let objects = if targets.len() > 0 {
+            targets
         } else {
-            stdin_lines().or(clipboard_lines()).unwrap_or(self.targets.clone())
+            stdin_lines().or(clipboard_lines()).unwrap_or(Vec::new())
         };
         if objects.is_empty() {
             Err(Error::Error(format!("no targets, try --help")))
