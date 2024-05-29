@@ -65,8 +65,9 @@ impl Carbon14 {
     pub fn scan(&mut self) -> Result<FWriter, Error> {
         let mut writer = self.cli.writer();
         for target in self.cli.objects()? {
-            let target = Path::from(&target).try_canonicalize();
+            let target = Path::from(&target);
             if target.exists() {
+                let target = target.canonicalize()?;
                 if target.is_file() {
                     match target.read_bytes() {
                         Ok(bytes) => {
