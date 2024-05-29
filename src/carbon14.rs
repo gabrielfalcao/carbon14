@@ -40,11 +40,16 @@ impl Cli {
         let log_err = defer_write;
         FWriter::new(self.output_file.clone(), defer_write, log_err)
     }
-    pub fn objects(&self) -> Vec<String> {
-        if self.targets.len() > 0 {
+    pub fn objects(&self) -> Result<Vec<String>, Error> {
+        let objects = if self.targets.len() > 0 {
             self.targets.iter().filter(|s| !s.is_empty()).map(|s| s.clone()).collect()
         } else {
             stdin_lines().or(clipboard_lines()).unwrap_or(Vec::new())
+        };
+        if objects.is_empty() {
+            Err(Error::Error(format!("no targets, try --help")))
+        } else {
+            Ok(objects)
         }
     }
 }
@@ -60,7 +65,7 @@ impl Carbon14 {
     }
     pub fn scan(&mut self) -> Result<FWriter, Error> {
         let mut writer = self.cli.writer();
-        for target in self.cli.objects() {
+        for target in self.cli.objects()? {
             if Path::from(&target).exists() {
                 let meta = (!self.cli.hexonly)
                     .then_some(writer.path().map(|p| p.to_string()))
@@ -101,8 +106,11 @@ impl Carbon14 {
         writer.finish()
     }
 }
-pub fn main() -> Result<(), Error> {
-    Carbon14::launch()
+pub fn main() {
+    if let Err(des) = Carbon14::launch() {
+        eprintln!("{}", des);
+        std::process::exit(0o11);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -159,7 +167,11 @@ impl FWriter {
     }
     pub fn finish(&mut self) -> Result<(), Error> {
         if self.buffer.is_empty() {
-            Err(Error::Error(format!("writing data to {}: empty buffer", self.output())))
+            if !self.defer_write {
+                Err(Error::Error(format!("writing data to {}: empty buffer", self.output())))
+            } else {
+                Ok(())
+            }
         } else {
             let buffer = self.buffer.clone();
             self.path
