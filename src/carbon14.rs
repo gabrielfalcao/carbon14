@@ -9,7 +9,7 @@ use std::io::{stdout, Write};
 
 use carbon14::{clipboard_lines, stdin_lines, Error, HochTable};
 use clap::Parser;
-use iocore::{walk_nodes, Exception, Path};
+use iocore::{walk_dir, Exception, Path};
 use serde::Serialize;
 use serde_yaml;
 
@@ -67,7 +67,7 @@ impl Carbon14 {
     pub fn scan(&mut self) -> Result<FWriter, Error> {
         let mut writer = self.cli.writer();
         for target in self.cli.objects()? {
-            let target = Path::from(&target);
+            let target = Path::from(&target).try_canonicalize();
             if target.exists() {
                 if target.is_file() {
                     match target.read_bytes() {
@@ -84,34 +84,38 @@ impl Carbon14 {
                             eprintln!("error reading {}: {}", &target, e);
                         },
                     }
-                }
-                walk_nodes(
-                    vec![target.to_string()],
-                    &mut |path: &Path| {
-                        if path.is_file() {
-                            match path.read_bytes() {
-                                Ok(bytes) => {
-                                    let meta = (!self.cli.hexonly)
-                                        .then_some(Some(path.to_string()))
-                                        .unwrap_or(None);
+                } else if target.is_dir() {
+                    walk_dir(
+                        target,
+                        &mut |path: &Path| {
+                            if path.is_file() {
+                                match path.read_bytes() {
+                                    Ok(bytes) => {
+                                        let meta = (!self.cli.hexonly)
+                                            .then_some(Some(path.to_string()))
+                                            .unwrap_or(None);
 
-                                    let table = HochTable::new(meta.clone()).cs(bytes);
-                                    self.tables.push(table.clone());
-                                    writer.append(&table).and(Ok(())).unwrap_or(());
-                                },
-                                Err(e) => {
-                                    eprintln!("error reading {}: {}", &path, e);
-                                },
+                                        let table = HochTable::new(meta.clone()).cs(bytes);
+                                        self.tables.push(table.clone());
+                                        writer.append(&table).and(Ok(())).unwrap_or(());
+                                    },
+                                    Err(e) => {
+                                        eprintln!("error reading {}: {}", &path, e);
+                                    },
+                                }
                             }
-                        }
-                        true
-                    },
-                    &mut |path, exc| {
-                        eprintln!("error reading {}: {}", path, exc);
-                        None
-                    },
-                    None,
-                )?;
+                            true
+                        },
+                        &mut |path, exc| {
+                            eprintln!("error reading {}: {}", path, exc);
+                            None
+                        },
+                        None,
+                        None,
+                    )?;
+                } else {
+                    continue;
+                }
             } else {
                 let target = target.to_string();
                 let meta = Some(target.clone());
