@@ -55,14 +55,12 @@ impl Cli {
     }
 }
 struct Carbon14 {
-    pub tables: Vec<HochTable>,
     pub cli: Cli,
 }
 impl Carbon14 {
     pub fn new() -> Carbon14 {
-        let tables = Vec::<HochTable>::new();
         let cli = Cli::parse();
-        Carbon14 { tables, cli }
+        Carbon14 { cli }
     }
     pub fn scan(&mut self) -> Result<FWriter, Error> {
         let mut writer = self.cli.writer();
@@ -77,7 +75,6 @@ impl Carbon14 {
                                 .unwrap_or(None);
 
                             let table = HochTable::new(meta.clone()).cs(bytes);
-                            self.tables.push(table.clone());
                             writer.append(&table).and(Ok(())).unwrap_or(());
                         },
                         Err(e) => {
@@ -96,7 +93,6 @@ impl Carbon14 {
                                             .unwrap_or(None);
 
                                         let table = HochTable::new(meta.clone()).cs(bytes);
-                                        self.tables.push(table.clone());
                                         writer.append(&table).and(Ok(())).unwrap_or(());
                                     },
                                     Err(e) => {
@@ -120,7 +116,6 @@ impl Carbon14 {
                 let target = target.to_string();
                 let meta = Some(target.clone());
                 let table = HochTable::new(meta).cs(target.as_bytes().to_vec());
-                self.tables.push(table.clone());
                 writer.append(&table)?;
             }
         }
