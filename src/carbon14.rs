@@ -33,18 +33,19 @@ pub struct Cli {
 
     #[clap(short, long, requires = "output_file")]
     pub defer_write: bool,
+
+    #[clap(short, long)]
+    pub log_err: bool,
 }
 impl Cli {
     pub fn writer(&self) -> FWriter {
-        let defer_write = self.defer_write.clone();
-        let log_err = defer_write;
-        FWriter::new(self.output_file.clone(), defer_write, log_err)
+        FWriter::new(self.output_file.clone(), self.defer_write, self.log_err)
     }
     pub fn objects(&self) -> Result<Vec<String>, Error> {
         let objects = if self.targets.len() > 0 {
             self.targets.iter().filter(|s| !s.is_empty()).map(|s| s.clone()).collect()
         } else {
-            stdin_lines().or(clipboard_lines()).unwrap_or(Vec::new())
+            stdin_lines().or(clipboard_lines()).unwrap_or(self.targets.clone())
         };
         if objects.is_empty() {
             Err(Error::Error(format!("no targets, try --help")))
@@ -66,24 +67,44 @@ impl Carbon14 {
     pub fn scan(&mut self) -> Result<FWriter, Error> {
         let mut writer = self.cli.writer();
         for target in self.cli.objects()? {
-            if Path::from(&target).exists() {
-                let meta = (!self.cli.hexonly)
-                    .then_some(writer.path().map(|p| p.to_string()))
-                    .unwrap_or(None);
+            let target = Path::from(&target);
+            if target.exists() {
+                if target.is_file() {
+                    match target.read_bytes() {
+                        Ok(bytes) => {
+                            let meta = (!self.cli.hexonly)
+                                .then_some(Some(target.to_string()))
+                                .unwrap_or(None);
+
+                            let table = HochTable::new(meta.clone()).cs(bytes);
+                            self.tables.push(table.clone());
+                            writer.append(&table).and(Ok(())).unwrap_or(());
+                        },
+                        Err(e) => {
+                            eprintln!("error reading {}: {}", &target, e);
+                        },
+                    }
+                }
                 walk_nodes(
                     vec![target.to_string()],
-                    &mut |p| {
-                        match Path::from(&target).read_bytes() {
-                            Ok(bytes) => {
-                                let table = HochTable::new(meta.clone()).cs(bytes);
-                                self.tables.push(table.clone());
-                                writer.append(&table).and(Ok(())).unwrap_or(());
-                            },
-                            Err(e) => {
-                                eprintln!("error reading {}: {}", &target, e);
-                            },
+                    &mut |path: &Path| {
+                        if path.is_file() {
+                            match path.read_bytes() {
+                                Ok(bytes) => {
+                                    let meta = (!self.cli.hexonly)
+                                        .then_some(Some(path.to_string()))
+                                        .unwrap_or(None);
+
+                                    let table = HochTable::new(meta.clone()).cs(bytes);
+                                    self.tables.push(table.clone());
+                                    writer.append(&table).and(Ok(())).unwrap_or(());
+                                },
+                                Err(e) => {
+                                    eprintln!("error reading {}: {}", &path, e);
+                                },
+                            }
                         }
-                        p.is_dir()
+                        true
                     },
                     &mut |path, exc| {
                         eprintln!("error reading {}: {}", path, exc);
@@ -92,6 +113,7 @@ impl Carbon14 {
                     None,
                 )?;
             } else {
+                let target = target.to_string();
                 let meta = Some(target.clone());
                 let table = HochTable::new(meta).cs(target.as_bytes().to_vec());
                 self.tables.push(table.clone());
@@ -167,7 +189,7 @@ impl FWriter {
     }
     pub fn finish(&mut self) -> Result<(), Error> {
         if self.buffer.is_empty() {
-            if !self.defer_write {
+            if self.defer_write {
                 Err(Error::Error(format!("writing data to {}: empty buffer", self.output())))
             } else {
                 Ok(())
