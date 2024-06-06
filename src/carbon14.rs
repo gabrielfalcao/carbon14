@@ -1,10 +1,12 @@
-// $$'""""'$$$                   $$                         $$$  $$   $$
-// $' .$$$. `$                   $$                          $$  $$   $$
-// $  $$$$$$$$ .$$$$$$. $$$$$$$. $$$$$$$. .$$$$$$. $$$$$$$.  $$  $$$$$$$
-// $  $$$$$$$$ $$'  `$$ $$'  `$$ $$'  `$$ $$'  `$$ $$'  `$$  $$       $$
-// $. `$$$' .$ $$.  .$$ $$       $$.  .$$ $$.  .$$ $$    $$  $$       $$
-// $$.     .$$ `$$$$$$$ $$       $$$$$$$' `$$$$$$' $$    $$ $$$$      $$
-// $$$$$$$$$$$
+// $$'""""'$$$\                  $$\\                       $$$  $$\  $$\\\
+// $' .$$$. `$\                  $$\\                        $$\ $$\  $$\\\
+// $  $$$$$$$$\.$$$$$$. $$$$$$$. $$$$$$$. .$$$$$$. $$$$$$$.  $$\ $$$$$$$\\\
+// $  $$$$$$$$\$$'  `$$ $$'\\`$$ $$'  `$$ $$'  `$$ $$'  `$$  $$\\ \\\\$$\\\
+// $. `$$$' .$\$$.  .$$ $$\      $$.  .$$ $$.  .$$ $$\   $$  $$\\     $$\\\
+// $$.     .$$\`$$$$$$$ $$\      $$$$$$$'\`$$$$$$' $$\   $$ $$$$\     $$\\\
+// $$$$$$$$$$$\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\\
+// \\\\\\\\\\\\\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\\
+// https://en.wikipedia.org/wiki/Radiocarbon_dating
 use std::io::{stdout, Write};
 
 use carbon14::{clipboard_lines, stdin_lines, Error, HochTable};
@@ -68,7 +70,7 @@ impl Carbon14 {
         for target in self.cli.objects()? {
             let target = Path::from(&target);
             if target.exists() {
-                let target = target.canonicalize()?;
+                let target = target.canonicalize()?.relative_to_cwd();
                 if target.is_file() {
                     match target.read_bytes() {
                         Ok(bytes) => {
@@ -177,6 +179,7 @@ impl FWriter {
             Error::Error(format!("encoding yaml destined to {}: {}", self.output(), e))
         })?;
         bytes.extend_from_slice(y.as_bytes());
+        bytes.extend_from_slice("#\t∎".as_bytes());
         Ok(bytes)
     }
     pub fn handle(&self, e: impl Into<Error>) -> Result<(), Error> {
