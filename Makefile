@@ -45,7 +45,10 @@ fmt:
 check:
 	cargo check --all-targets
 
-build test: check
+test: build
+	cargo run -- Cargo.toml README.md
+
+build: check
 	cargo $@
 
 run: cleanx $(CARBON14_DEBUG_EXEC)
