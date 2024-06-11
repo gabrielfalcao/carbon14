@@ -177,7 +177,7 @@ impl FWriter {
         let mut bytes = b"\n---\n".to_vec();
         let y = serde_yaml::to_string(&data).map_err(|e| {
             Error::Error(format!("encoding yaml destined to {}: {}", self.output(), e))
-        })?;
+        })?.trim().to_string();
         bytes.extend_from_slice(y.as_bytes());
         bytes.extend_from_slice("#\t∎".as_bytes());
         Ok(bytes)
