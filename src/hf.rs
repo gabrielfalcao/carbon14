@@ -6,6 +6,7 @@
 // $$.     .$$ `$$$$$$$ $$       $$$$$$$' `$$$$$$' $$    $$ $$$$      $$
 // $$$$$$$$$$$
 
+use diff::Diff;
 use iocore::Path;
 use adler32::adler32;
 use crc::{
@@ -66,7 +67,7 @@ pub use md5::compute as md5_compute;
 use serde::{Serialize,Deserialize};
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Diff)]
 pub struct HochTable {
     #[serde(skip_serializing_if = "Option::is_none")]
     filename: Option<String>,
@@ -140,7 +141,7 @@ pub struct HochTable {
 
 impl HochTable {
     pub fn new(meta: Option<String>) -> HochTable {
-        let filename = meta.clone().filter(|s| Path::from(s).is_file());
+        let filename = meta.clone().filter(|s| Path::from(s).is_file()).map(|f| Path::new(f).relative_to_cwd().to_string());
         let data = meta.xor(filename.clone());
         return HochTable {
             filename: filename,
