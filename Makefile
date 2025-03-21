@@ -1,4 +1,4 @@
-INSTALL_PATH		:=$(HOME)/usr/libexec/
+INSTALL_PATH		:=$(HOME)/opt/libexec
 CARBON14_NAME		:=carbon14
 CARBON14_VERSION	:=$(shell cargo run -- --version | awk '{ print $$NF }')
 CARBON14_DEBUG_EXEC	:=target/debug/$(CARBON14_NAME)
@@ -45,7 +45,10 @@ fmt:
 check:
 	cargo check --all-targets
 
-build test: check
+test: build
+	cargo run -- Cargo.toml README.md
+
+build: check
 	cargo $@
 
 run: cleanx $(CARBON14_DEBUG_EXEC)

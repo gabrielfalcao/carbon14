@@ -1,6 +1,6 @@
 [package]
 name = "carbon14"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 license = "MIT"
 authors = ["Gabriel Falcão <gabriel@nacaolivre.org>"]
@@ -8,17 +8,19 @@ description = "file-system forensics"
 documentation = "https://docs.rs/carbon14"
 readme = "README.md"
 homepage = "https://github.com/gabrielfalcao/carbon14"
-
+autoexamples = false
+autobenches = false
+autotests = false
 
 [dependencies]
 adler32 = { version = "1.2.0", features = ["core"] }
 base64 = "0.21.5"
 clap = { version = "4.4.6", features = ["derive", "unicode", "env", "string", "wrap_help"] }
 copypasta = "0.10.0"
+iocore = { version="0.1010.0" }
 crc = "3.0.1"
 hex = { version = "0.4.3", features = ["serde"] }
 indicatif = "0.17.7"
-iocore = "0.111.0"
 md5 = "0.7.0"
 serde = { version = "1.0.190", features = ["alloc", "derive", "rc", "serde_derive"] }
 serde-jsonlines = "0.4.0"
@@ -27,17 +29,26 @@ serde_yaml = "0.9.27"
 sha = "1.0.3"
 sha2 = { version = "0.10.8", features = ["oid", "compress"] }
 sha3 = { version = "0.10.8", features = ["std", "asm", "reset", "oid"] }
-
-
+diff-struct = "0.5.3"
 
 [[bin]]
 name = "carbon14"
-path = "src/main.rs"
+path = "carbon14/carbon14.rs"
 bench = false
+test = false
 
 [lib]
 name = "carbon14"
-path = "src/lib.rs"
+path = "carbon14/lib.rs"
+test = false
 
 [dev-dependencies]
 k9 = "0.11.6"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+'cfg(tarpaulin)',
+'cfg(freebsd10)',
+'cfg(freebsd11)',
+'cfg(freebsd12)',
+] }
