@@ -11,7 +11,7 @@ use std::io::{stdout, Write};
 
 use carbon14::{clipboard_lines, stdin_lines, Error, HochTable};
 use clap::Parser;
-use iocore::{walk_dir, Error as IOCoreException, Node, Path, WalkProgressHandler};
+use iocore::{walk_dir, Error as IOCoreError, Path, WalkProgressHandler};
 use serde::Serialize;
 use serde_yaml;
 
@@ -51,15 +51,15 @@ impl Cli {
                 Some(path) => Some(path),
                 None =>
                     if self.targets.len() == 1 {
-                        let path = Path::new(self.targets[0].clone());
+                        let path = Path::raw(self.targets[0].clone());
                         if path.is_file() {
                             let extension = match path.extension() {
                                 Some(extension) => format!("{}.c14", extension),
                                 None => format!(".c14"),
                             };
-                            Some(Path::new(path.with_extension(extension).name()))
+                            Some(Path::raw(path.with_extension(extension).name()))
                         } else {
-                            Some(Path::new(path.name()).with_extension(".c14"))
+                            Some(Path::raw(path.name()).with_extension(".c14"))
                         }
                     } else {
                         None
@@ -75,7 +75,7 @@ impl Cli {
             .targets
             .iter()
             .filter(|s| !s.is_empty())
-            .map(|s| Path::from(s))
+            .map(|s| Path::raw(s))
             .filter(|p| p.exists())
             .map(|p| p.to_string())
             .collect();
@@ -103,7 +103,7 @@ impl Carbon14 {
     pub fn scan(&mut self) -> Result<FWriter, Error> {
         let mut writer = self.cli.writer();
         for target in self.cli.objects()? {
-            let target = Path::from(&target);
+            let target = Path::raw(&target);
             if target.exists() {
                 let target = target.canonicalize()?.relative_to_cwd();
                 if target.is_file() {
@@ -126,7 +126,6 @@ impl Carbon14 {
                         Table {
                             opt: self.cli.clone(),
                         },
-                        None,
                         None,
                     )?;
                 } else {
@@ -196,7 +195,7 @@ impl FWriter {
                 } else {
                     if let Err(y) =
                         self.path.clone().map(|path| path.append(&bytes)).unwrap_or_else(|| {
-                            stdout().write(&bytes).map_err(|e| IOCoreException::from(e))
+                            stdout().write(&bytes).map_err(|e| IOCoreError::from(e))
                         })
                     {
                         self.handle(y)?;
@@ -242,7 +241,7 @@ impl FWriter {
             self.path
                 .clone()
                 .map(|path| path.write(&buffer).map(|_| buffer.len()))
-                .unwrap_or_else(|| stdout().write(&buffer).map_err(|e| IOCoreException::from(e)))?;
+                .unwrap_or_else(|| stdout().write(&buffer).map_err(|e| IOCoreError::from(e)))?;
             Ok(())
         }
     }
@@ -261,27 +260,20 @@ pub struct Table {
 }
 
 impl WalkProgressHandler for Table {
-    fn path_matching(&mut self, location: &Path, _n: &Node) -> bool {
+    fn path_matching(&mut self, location: &Path) -> Result<bool, IOCoreError> {
         let mut writer = self.opt.writer();
 
         if location.is_file() {
-            match location.read_bytes() {
-                Ok(bytes) => {
-                    let meta =
-                        (!self.opt.hexonly).then_some(Some(location.to_string())).unwrap_or(None);
+            let bytes = location.read_bytes()?;
+            let meta = (!self.opt.hexonly).then_some(Some(location.to_string())).unwrap_or(None);
 
-                    let table = HochTable::new(meta.clone()).cs(bytes);
-                    writer.append(&table).and(Ok(())).unwrap_or(());
-                },
-                Err(e) => {
-                    eprintln!("error reading {}: {}", location, e);
-                },
-            }
+            let table = HochTable::new(meta.clone()).cs(bytes);
+            writer.append(&table).and(Ok(())).unwrap_or(());
         }
-        true
+        Ok(true)
     }
 
-    fn error(&mut self, _p: &Path, _e: IOCoreException) -> Option<IOCoreException> {
+    fn error(&mut self, _p: &Path, _e: IOCoreError) -> Option<IOCoreError> {
         None
     }
 }

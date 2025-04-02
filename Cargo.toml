@@ -1,9 +1,9 @@
 [package]
 name = "carbon14"
-version = "0.0.3"
-edition = "2021"
+version = "0.1.0"
+edition = "2024"
 license = "MIT"
-authors = ["Gabriel Falcão <gabriel@nacaolivre.org>"]
+authors = ["Gabriel DeMoura <gabrielteratos@gmail.com>"]
 description = "file-system forensics"
 documentation = "https://docs.rs/carbon14"
 readme = "README.md"
@@ -17,7 +17,7 @@ adler32 = { version = "1.2.0", features = ["core"] }
 base64 = "0.21.5"
 clap = { version = "4.4.6", features = ["derive", "unicode", "env", "string", "wrap_help"] }
 copypasta = "0.10.0"
-iocore = { version="0.1010.0" }
+iocore = { version="1.0.1" }
 crc = "3.0.1"
 hex = { version = "0.4.3", features = ["serde"] }
 indicatif = "0.17.7"
