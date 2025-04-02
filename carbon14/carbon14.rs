@@ -7,11 +7,11 @@
 // $$$$$$$$$$$\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\\
 // \\\\\\\\\\\\\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\
 // https://en.wikipedia.org/wiki/Radiocarbon_dating
-use std::io::{stdout, Write};
+use std::io::{Write, stdout};
 
-use carbon14::{clipboard_lines, stdin_lines, Error, HochTable};
+use carbon14::{Error, HochTable, clipboard_lines, stdin_lines};
 use clap::Parser;
-use iocore::{walk_dir, Error as IOCoreError, Path, WalkProgressHandler};
+use iocore::{Error as IOCoreError, Path, WalkProgressHandler, walk_dir};
 use serde::Serialize;
 use serde_yaml;
 
@@ -193,10 +193,18 @@ impl FWriter {
                 if self.defer_write {
                     self.buffer.extend_from_slice(&bytes);
                 } else {
-                    if let Err(y) =
-                        self.path.clone().map(|path| path.append(&bytes)).unwrap_or_else(|| {
-                            stdout().write(&bytes).map_err(|e| IOCoreError::from(e))
+                    if let Err(y) = self
+                        .path
+                        .clone()
+                        .map(|path| {
+                            if path.exists() {
+                                path.append(&bytes)
+                            } else {
+                                path.write(&bytes)
+                                    .map(|path| path.size().unwrap().as_u64() as usize)
+                            }
                         })
+                        .unwrap_or_else(|| stdout().write(&bytes).map_err(|e| IOCoreError::from(e)))
                     {
                         self.handle(y)?;
                     }

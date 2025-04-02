@@ -1,6 +1,6 @@
 [package]
 name = "carbon14"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 authors = ["Gabriel DeMoura <gabrielteratos@gmail.com>"]
@@ -14,22 +14,19 @@ autotests = false
 
 [dependencies]
 adler32 = { version = "1.2.0", features = ["core"] }
-base64 = "0.21.5"
-clap = { version = "4.4.6", features = ["derive", "unicode", "env", "string", "wrap_help"] }
-copypasta = "0.10.0"
-iocore = { version="1.0.1" }
-crc = "3.0.1"
+base64 = "0.22.1"
+clap = { version = "4.5.35", features = ["derive", "unicode", "env", "string", "wrap_help"] }
+copypasta = "0.10.1"
+crc = "3.2.1"
+diff-struct = "0.5.3"
 hex = { version = "0.4.3", features = ["serde"] }
-indicatif = "0.17.7"
+iocore = "1.0.1"
 md5 = "0.7.0"
-serde = { version = "1.0.190", features = ["alloc", "derive", "rc", "serde_derive"] }
-serde-jsonlines = "0.4.0"
-serde_json = { version = "1.0.108", features = ["alloc", "std", "float_roundtrip", "arbitrary_precision", "indexmap", "preserve_order"] }
-serde_yaml = "0.9.27"
+serde = { version = "1.0.219", features = ["alloc", "derive", "rc", "serde_derive"] }
+serde_yaml = "0.9.34"
 sha = "1.0.3"
 sha2 = { version = "0.10.8", features = ["oid", "compress"] }
 sha3 = { version = "0.10.8", features = ["std", "asm", "reset", "oid"] }
-diff-struct = "0.5.3"
 
 [[bin]]
 name = "carbon14"

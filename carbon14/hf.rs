@@ -143,7 +143,7 @@ pub struct HochTable {
 
 impl HochTable {
     pub fn new(meta: Option<String>) -> HochTable {
-        let filename = meta.clone().filter(|s| Path::from(s).is_file()).map(|f| Path::new(f).relative_to_cwd().to_string());
+        let filename = meta.clone().filter(|s| Path::raw(s).is_file()).map(|f| Path::raw(f).relative_to_cwd().to_string());
         let data = meta.xor(filename.clone());
         return HochTable {
             filename: filename,
