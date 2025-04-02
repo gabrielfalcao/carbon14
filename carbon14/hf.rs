@@ -8,71 +8,33 @@
 // \\\\\\\\\\\\\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\
 // https://en.wikipedia.org/wiki/Radiocarbon_dating
 
-use diff::Diff;
-use iocore::Path;
+use iocore::{Path, PathDateTime};
 use adler32::adler32;
 use crc::{
-    Crc,
-    CRC_3_GSM,
-    CRC_4_G_704,
-    CRC_5_G_704,
-    CRC_6_CDMA2000_A,
-    CRC_6_CDMA2000_B,
-    CRC_6_GSM,
-    CRC_8_LTE,
-    CRC_11_FLEXRAY,
-    CRC_16_TELEDISK,
-    CRC_16_OPENSAFETY_A,
-    CRC_16_OPENSAFETY_B,
-    CRC_16_PROFIBUS,
-    CRC_16_USB,
-    CRC_16_XMODEM,
-    CRC_24_BLE,
-    CRC_24_OPENPGP,
-    CRC_32_BZIP2,
-    CRC_32_ISCSI,
-    CRC_32_ISO_HDLC,
-    CRC_32_JAMCRC,
-    CRC_32_MPEG_2,
-    CRC_40_GSM,
-    CRC_64_GO_ISO,
-    CRC_64_REDIS,
-    CRC_64_ECMA_182,
-    CRC_64_XZ,
-    CRC_64_MS,
-    CRC_64_WE,
-    CRC_82_DARC
+    CRC_3_GSM, CRC_4_G_704, CRC_5_G_704, CRC_6_CDMA2000_A, CRC_6_CDMA2000_B, CRC_6_GSM, CRC_8_LTE,
+    CRC_11_FLEXRAY, CRC_16_OPENSAFETY_A, CRC_16_OPENSAFETY_B, CRC_16_PROFIBUS, CRC_16_TELEDISK,
+    CRC_16_USB, CRC_16_XMODEM, CRC_24_BLE, CRC_24_OPENPGP, CRC_32_BZIP2, CRC_32_ISCSI,
+    CRC_32_ISO_HDLC, CRC_32_JAMCRC, CRC_32_MPEG_2, CRC_40_GSM, CRC_64_ECMA_182, CRC_64_GO_ISO,
+    CRC_64_MS, CRC_64_REDIS, CRC_64_WE, CRC_64_XZ, CRC_82_DARC, Crc,
 };
 pub use sha::sha1::Sha1;
-pub use sha::utils::Digest;
-pub use sha::utils::DigestExt;
-pub use sha2::{
-    Sha512,
-    Sha224,
-    Sha384,
-    Sha256,
-    Sha512_224,
-    Sha512_256,
-};
+pub use sha::utils::{Digest, DigestExt};
+pub use sha2::{Sha224, Sha256, Sha384, Sha512, Sha512_224, Sha512_256};
 use sha2::Digest as Sha2Digest;
-
-pub use sha3::{
-    Keccak256Full,
-    Keccak256,
-    Keccak224,
-    Sha3_224,
-    Sha3_256,
-    Sha3_384,
-    Sha3_512,
-};
+pub use sha3::{Keccak224, Keccak256, Keccak256Full, Sha3_224, Sha3_256, Sha3_384, Sha3_512};
 pub use md5::compute as md5_compute;
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Diff)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HochTable {
     #[serde(skip_serializing_if = "Option::is_none")]
     filename: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    accessed: Option<PathDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    modified: Option<PathDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    created: Option<PathDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<String>,
     sha1: Option<String>,
@@ -143,10 +105,27 @@ pub struct HochTable {
 
 impl HochTable {
     pub fn new(meta: Option<String>) -> HochTable {
-        let filename = meta.clone().filter(|s| Path::raw(s).is_file()).map(|f| Path::raw(f).relative_to_cwd().to_string());
+        let (filename, accessed, modified, created) = match meta {
+            Some(ref f) => match Path::raw(f).timestamps() {
+                Ok(timestamps) => (
+                    Some(timestamps.path.relative_to_cwd().to_string()),
+                    Some(timestamps.accessed),
+                    Some(timestamps.modified),
+                    Some(timestamps.created),
+                ),
+                Err(e) => {
+                    eprintln!("[warning] {}", e);
+                    (None, None, None, None)
+                },
+            },
+            None =>  (None, None, None, None),
+        };
         let data = meta.xor(filename.clone());
         return HochTable {
             filename: filename,
+            accessed: accessed,
+            modified: modified,
+            created: created,
             data: data,
             md5: None,
             sha1: None,
@@ -193,7 +172,7 @@ impl HochTable {
             keccak224: None,
             keccak256: None,
             keccak256_full: None,
-        }
+        };
     }
     pub fn cs(&mut self, data: Vec<u8>) -> HochTable {
         let data = data.to_vec();
@@ -251,7 +230,9 @@ impl HochTable {
 
         let md5 = format!("{:064x}", md5_compute(data.clone().as_slice()));
 
-        let adler32 = adler32(data.clone().as_slice()).map(|n| format!("{:08x}", n)).unwrap_or_else(|e| format!("adler32 error: {}", e));
+        let adler32 = adler32(data.clone().as_slice())
+            .map(|n| format!("{:08x}", n))
+            .unwrap_or_else(|e| format!("adler32 error: {}", e));
 
         // CRC
         let crc = Crc::<u32>::new(&CRC_32_BZIP2);
@@ -388,6 +369,6 @@ impl HochTable {
         self.keccak224 = Some(keccak224);
         self.keccak256 = Some(keccak256);
         self.keccak256_full = Some(keccak256_full);
-        return self.clone()
+        return self.clone();
     }
 }
