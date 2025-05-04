@@ -1,6 +1,6 @@
 [package]
 name = "carbon14"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 authors = ["Gabriel DeMoura <gabrielteratos@gmail.com>"]
@@ -19,7 +19,7 @@ clap = { version = "4.5.35", features = ["derive", "unicode", "env", "string", "
 copypasta = "0.10.1"
 crc = "3.2.1"
 hex = { version = "0.4.3", features = ["serde"] }
-iocore = "3.0.1"
+iocore = "3.0.2"
 md5 = "0.7.0"
 ripemd = "0.1.3"
 serde = { version = "1.0.219", features = ["alloc", "derive", "rc", "serde_derive"] }
@@ -31,7 +31,7 @@ sure25 = "0.0.3"
 
 [[bin]]
 name = "carbon14"
-path = "carbon14/carbon14.rs"
+path = "cli.rs"
 bench = false
 test = false
 

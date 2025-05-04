@@ -52,3 +52,6 @@ FILE-SYSTEM FORENSICS
     - **CRC_64_MS**
     - **CRC_64_WE**
     - **CRC_82_DARC**
+  - RIPEMD160
+  - RIPEMD320
+  - SURE25
