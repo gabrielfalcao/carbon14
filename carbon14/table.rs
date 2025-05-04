@@ -1,13 +1,3 @@
-// $$'""""'$$$\                  $$\\                       $$$  $$\  $$\\\
-// $' .$$$. `$\                  $$\\                        $$\ $$\  $$\\\
-// $  $$$$$$$$\.$$$$$$. $$$$$$$. $$$$$$$. .$$$$$$. $$$$$$$.  $$\ $$$$$$$\\\
-// $  $$$$$$$$\$$'  `$$ $$'\\`$$ $$'  `$$ $$'  `$$ $$'  `$$  $$\\ \\\\$$\\\
-// $. `$$$' .$\$$.  .$$ $$\      $$.  .$$ $$.  .$$ $$\   $$  $$\\     $$\\\
-// $$.     .$$\`$$$$$$$ $$\      $$$$$$$'\`$$$$$$' $$\   $$ $$$$\     $$\\\
-// $$$$$$$$$$$\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\\
-// \\\\\\\\\\\\\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\
-// https://en.wikipedia.org/wiki/Radiocarbon_dating
-
 use iocore::{Path, PathDateTime};
 use adler32::adler32;
 use crc::{
@@ -24,9 +14,11 @@ use sha2::Digest as Sha2Digest;
 pub use sha3::{Keccak224, Keccak256, Keccak256Full, Sha3_224, Sha3_256, Sha3_384, Sha3_512};
 pub use md5::compute as md5_compute;
 use serde::{Deserialize, Serialize};
+use ripemd::{Ripemd160, Ripemd320};
+use sure25::Hasher as Sure25;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct HochTable {
+pub struct TableV1 {
     #[serde(skip_serializing_if = "Option::is_none")]
     filename: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -101,10 +93,13 @@ pub struct HochTable {
     crc64_xz: Option<String>,
     crc82_darc: Option<String>,
     md5: Option<String>,
+    ripemd160: Option<String>,
+    ripemd320: Option<String>,
+    sure25: Option<String>,
 }
 
-impl HochTable {
-    pub fn new(meta: Option<String>) -> HochTable {
+impl TableV1 {
+    pub fn new(meta: Option<String>) -> TableV1 {
         let (filename, accessed, modified, created) = match meta {
             Some(ref f) => match Path::raw(f).timestamps() {
                 Ok(timestamps) => (
@@ -118,10 +113,10 @@ impl HochTable {
                     (None, None, None, None)
                 },
             },
-            None =>  (None, None, None, None),
+            None => (None, None, None, None),
         };
         let data = meta.xor(filename.clone());
-        return HochTable {
+        return TableV1 {
             filename: filename,
             accessed: accessed,
             modified: modified,
@@ -172,157 +167,172 @@ impl HochTable {
             keccak224: None,
             keccak256: None,
             keccak256_full: None,
+            ripemd160: None,
+            ripemd320: None,
+            sure25: None,
         };
     }
-    pub fn cs(&mut self, data: Vec<u8>) -> HochTable {
+    pub fn cs(&mut self, data: Vec<u8>) -> TableV1 {
         let data = data.to_vec();
         let mut sha3 = Sha3_224::new();
-        sha3.update(data.clone().as_slice());
+        sha3.update(data.as_slice());
         let sha3_224 = hex::encode(sha3.finalize());
 
         let mut sha3_256 = Sha3_256::new();
-        sha3_256.update(data.clone().as_slice());
+        sha3_256.update(data.as_slice());
         let sha3_256 = hex::encode(sha3_256.finalize());
 
         let mut sha3_384 = Sha3_384::new();
-        sha3_384.update(data.clone().as_slice());
+        sha3_384.update(data.as_slice());
         let sha3_384 = hex::encode(sha3_384.finalize());
 
         let mut sha3_512 = Sha3_512::new();
-        sha3_512.update(data.clone().as_slice());
+        sha3_512.update(data.as_slice());
         let sha3_512 = hex::encode(sha3_512.finalize());
 
         let mut keccak224 = Keccak224::new();
-        keccak224.update(data.clone().as_slice());
+        keccak224.update(data.as_slice());
         let keccak224 = hex::encode(keccak224.finalize());
 
         let mut keccak256 = Keccak256::new();
-        keccak256.update(data.clone().as_slice());
+        keccak256.update(data.as_slice());
         let keccak256 = hex::encode(keccak256.finalize());
 
         let mut keccak256_full = Keccak256Full::new();
-        keccak256_full.update(data.clone().as_slice());
+        keccak256_full.update(data.as_slice());
         let keccak256_full = hex::encode(keccak256_full.finalize());
 
         let mut sha2 = Sha512_224::new();
-        sha2.update(data.clone().as_slice());
+        sha2.update(data.as_slice());
         let sha512_224 = hex::encode(sha2.finalize());
 
         let mut sha2 = Sha512_256::new();
-        sha2.update(data.clone().as_slice());
+        sha2.update(data.as_slice());
         let sha512_256 = hex::encode(sha2.finalize());
 
         let mut sha2 = Sha224::new();
-        sha2.update(data.clone().as_slice());
+        sha2.update(data.as_slice());
         let sha224 = hex::encode(sha2.finalize());
 
         let mut sha2 = Sha256::new();
-        sha2.update(data.clone().as_slice());
+        sha2.update(data.as_slice());
         let sha256 = hex::encode(sha2.finalize());
 
         let mut sha2 = Sha384::new();
-        sha2.update(data.clone().as_slice());
+        sha2.update(data.as_slice());
         let sha384 = hex::encode(sha2.finalize());
 
         let mut sha2 = Sha512::new();
-        sha2.update(data.clone().as_slice());
+        sha2.update(data.as_slice());
         let sha512 = hex::encode(sha2.finalize());
 
-        let md5 = format!("{:064x}", md5_compute(data.clone().as_slice()));
+        let mut ripemd160 = Ripemd160::new();
+        ripemd160.update(data.as_slice());
+        let ripemd160 = hex::encode(ripemd160.finalize());
 
-        let adler32 = adler32(data.clone().as_slice())
+        let mut ripemd320 = Ripemd320::new();
+        ripemd320.update(data.as_slice());
+        let ripemd320 = hex::encode(ripemd320.finalize());
+
+        let mut sure25 = Sure25::new();
+        sure25.update(data.as_slice());
+        let sure25 = hex::encode(sure25.finalize());
+
+        let md5 = format!("{:064x}", md5_compute(data.as_slice()));
+
+        let adler32 = adler32(data.as_slice())
             .map(|n| format!("{:08x}", n))
             .unwrap_or_else(|e| format!("adler32 error: {}", e));
 
         // CRC
         let crc = Crc::<u32>::new(&CRC_32_BZIP2);
-        let crc32_bzip2 = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc32_bzip2 = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u32>::new(&CRC_32_JAMCRC);
-        let crc32_jamcrc = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc32_jamcrc = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u32>::new(&CRC_32_ISCSI);
-        let crc32_iscsi = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc32_iscsi = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u32>::new(&CRC_32_MPEG_2);
-        let crc32_mpeg2 = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc32_mpeg2 = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_11_FLEXRAY);
-        let crc11_flexray = format!("{:04x}", crc.checksum(data.clone().as_slice()));
+        let crc11_flexray = format!("{:04x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_3_GSM);
-        let crc3_gsm = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc3_gsm = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_4_G_704);
-        let crc4_g704 = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc4_g704 = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_6_GSM);
-        let crc6_gsm = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc6_gsm = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_6_CDMA2000_A);
-        let crc6_cdma_2000a = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc6_cdma_2000a = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_6_CDMA2000_B);
-        let crc6_cdma_2000b = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc6_cdma_2000b = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_8_LTE);
-        let crc8_lte = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc8_lte = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u8>::new(&CRC_5_G_704);
-        let crc5_g704 = format!("{:02x}", crc.checksum(data.clone().as_slice()));
+        let crc5_g704 = format!("{:02x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_16_TELEDISK);
-        let crc16_teledisk = format!("{:04x}", crc.checksum(data.clone().as_slice()));
+        let crc16_teledisk = format!("{:04x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_16_OPENSAFETY_A);
-        let crc16_opensafety_a = format!("{:04x}", crc.checksum(data.clone().as_slice()));
+        let crc16_opensafety_a = format!("{:04x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_16_OPENSAFETY_B);
-        let crc16_opensafety_b = format!("{:04x}", crc.checksum(data.clone().as_slice()));
+        let crc16_opensafety_b = format!("{:04x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_16_PROFIBUS);
-        let crc16_profibus = format!("{:04x}", crc.checksum(data.clone().as_slice()));
+        let crc16_profibus = format!("{:04x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_16_USB);
-        let crc16_usb = format!("{:04x}", crc.checksum(data.clone().as_slice()));
+        let crc16_usb = format!("{:04x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
-        let crc32_isohdlc = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc32_isohdlc = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_40_GSM);
-        let crc40_gsm = format!("{:016x}", crc.checksum(data.clone().as_slice()));
+        let crc40_gsm = format!("{:016x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_64_MS);
-        let crc64_ms = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc64_ms = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_64_WE);
-        let crc64_we = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc64_we = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u16>::new(&CRC_16_XMODEM);
-        let crc16_xmodem = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc16_xmodem = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u32>::new(&CRC_24_BLE);
-        let crc24_ble = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc24_ble = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u32>::new(&CRC_24_OPENPGP);
-        let crc24_openpgp = format!("{:08x}", crc.checksum(data.clone().as_slice()));
+        let crc24_openpgp = format!("{:08x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_64_REDIS);
-        let crc64_redis = format!("{:016x}", crc.checksum(data.clone().as_slice()));
+        let crc64_redis = format!("{:016x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_64_XZ);
-        let crc64_xz = format!("{:016x}", crc.checksum(data.clone().as_slice()));
+        let crc64_xz = format!("{:016x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_64_GO_ISO);
-        let crc64_goiso = format!("{:016x}", crc.checksum(data.clone().as_slice()));
+        let crc64_goiso = format!("{:016x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u64>::new(&CRC_64_ECMA_182);
-        let crc64_ecma182 = format!("{:016x}", crc.checksum(data.clone().as_slice()));
+        let crc64_ecma182 = format!("{:016x}", crc.checksum(data.as_slice()));
 
         let crc = Crc::<u128>::new(&CRC_82_DARC);
-        let crc82_darc = format!("{:032x}", crc.checksum(data.clone().as_slice()));
+        let crc82_darc = format!("{:032x}", crc.checksum(data.as_slice()));
 
-        let sha1 = Sha1::default().digest(data.clone().as_slice()).to_hex();
+        let sha1 = Sha1::default().digest(data.as_slice()).to_hex();
 
         self.md5 = Some(md5);
         self.sha1 = Some(sha1);
@@ -369,6 +379,9 @@ impl HochTable {
         self.keccak224 = Some(keccak224);
         self.keccak256 = Some(keccak256);
         self.keccak256_full = Some(keccak256_full);
+        self.ripemd160 = Some(ripemd160);
+        self.ripemd320 = Some(ripemd320);
+        self.sure25 = Some(sure25);
         return self.clone();
     }
 }
