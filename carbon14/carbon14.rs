@@ -1,15 +1,6 @@
-// $$'""""'$$$\                  $$\\                       $$$  $$\  $$\\\
-// $' .$$$. `$\                  $$\\                        $$\ $$\  $$\\\
-// $  $$$$$$$$\.$$$$$$. $$$$$$$. $$$$$$$. .$$$$$$. $$$$$$$.  $$\ $$$$$$$\\\
-// $  $$$$$$$$\$$'  `$$ $$'\\`$$ $$'  `$$ $$'  `$$ $$'  `$$  $$\\ \\\\$$\\\
-// $. `$$$' .$\$$.  .$$ $$\      $$.  .$$ $$.  .$$ $$\   $$  $$\\     $$\\\
-// $$.     .$$\`$$$$$$$ $$\      $$$$$$$'\`$$$$$$' $$\   $$ $$$$\     $$\\\
-// $$$$$$$$$$$\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\\
-// \\\\\\\\\\\\\ \\\\\\\ \\\\     \\\\\\\\\ \\\\\\\ \\\\  \\ \\\\\     \\\\
-// https://en.wikipedia.org/wiki/Radiocarbon_dating
 use std::io::{Write, stdout};
 
-use carbon14::{Error, HochTable, clipboard_lines, stdin_lines};
+use carbon14::{Error, TableV1, clipboard_lines, stdin_lines};
 use clap::Parser;
 use iocore::{Error as IOCoreError, Path, WalkProgressHandler, walk_dir};
 use serde::Serialize;
@@ -113,7 +104,7 @@ impl Carbon14 {
                                 .then_some(Some(target.to_string()))
                                 .unwrap_or(None);
 
-                            let table = HochTable::new(meta.clone()).cs(bytes);
+                            let table = TableV1::new(meta.clone()).cs(bytes);
                             writer.append(&table).and(Ok(())).unwrap_or(());
                         },
                         Err(e) => {
@@ -134,7 +125,7 @@ impl Carbon14 {
             } else {
                 let target = target.to_string();
                 let meta = Some(target.clone());
-                let table = HochTable::new(meta).cs(target.as_bytes().to_vec());
+                let table = TableV1::new(meta).cs(target.as_bytes().to_vec());
                 writer.append(&table)?;
             }
         }
@@ -275,7 +266,7 @@ impl WalkProgressHandler for Table {
             let bytes = location.read_bytes()?;
             let meta = (!self.opt.hexonly).then_some(Some(location.to_string())).unwrap_or(None);
 
-            let table = HochTable::new(meta.clone()).cs(bytes);
+            let table = TableV1::new(meta.clone()).cs(bytes);
             writer.append(&table).and(Ok(())).unwrap_or(());
         }
         Ok(true)

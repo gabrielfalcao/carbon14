@@ -1,21 +1,13 @@
 use clap::{Parser, ValueEnum};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use std::io::Write;
-use carbon14::HochTable;
+use carbon14::TableV1;
 use carbon14::Error;
 use iocore::{absolute_path, rsvfilematch, open_write};
 use serde_yaml;
 use std::borrow::BorrowMut;
 use iocore::PathRelative;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum Format {
-    Plain,
-    Csv,
-    Toml,
-    Json,
-    Yaml,
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -29,9 +21,6 @@ pub struct Argv {
     #[clap(short, long)]
     pub clipboard: bool,
 
-    #[clap(short, long, value_enum)]
-    pub format: Option<Format>,
-
     #[clap(short, long)]
     pub output_file: Option<String>,
 }
@@ -41,14 +30,14 @@ pub fn main() -> Result<(), Error> {
     let clipboard = args.clipboard;
     let hexonly = args.hexonly;
     let output_file = args.output_file.clone();
-    let mut table_list = Vec::<HochTable>::new();
-    let tables: &mut Vec<HochTable> = table_list.borrow_mut();
+    let mut table_list = Vec::<TableV1>::new();
+    let tables: &mut Vec<TableV1> = table_list.borrow_mut();
     rsvfilematch(args.files, move |path| {
         let data = match std::fs::read(&path) {
             Ok(data) => data.to_vec(),
             Err(_) => return false,
         };
-        match HochTable::new(
+        match TableV1::new(
             format!(
                 "{}",
                 path.relative_wherewith(&absolute_path(".").unwrap())
